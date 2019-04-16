@@ -49,9 +49,10 @@ class Resource
 
     /**
      * @param null|array $data
+     * @param array $additionalHeaders
      * @return bool|string
      */
-    public function get($data = null)
+    public function get($data = null, $additionalHeaders = [])
     {
         $uri = $this->getUri();
 
@@ -60,32 +61,35 @@ class Resource
             $uri .= http_build_query($data);
         }
 
-        return $this->sendApiRequest($uri, 'GET');
+        return $this->sendApiRequest($uri, 'GET', [], $additionalHeaders);
     }
 
     /**
      * @param array $data
+     * @param array $additionalHeaders
      * @return bool|string
      */
-    public function put($data)
+    public function put($data, $additionalHeaders = [])
     {
-        return $this->sendApiRequest($this->getUri(), 'PUT', $data);
+        return $this->sendApiRequest($this->getUri(), 'PUT', $data, $additionalHeaders);
     }
 
     /**
      * @param array $data
+     * @param array $additionalHeaders
      * @return bool|string
      */
-    public function post($data)
+    public function post($data, $additionalHeaders = [])
     {
-        return $this->sendApiRequest($this->getUri(), 'POST', $data);
+        return $this->sendApiRequest($this->getUri(), 'POST', $data, $additionalHeaders);
     }
 
     /**
      * @param null|array $data
+     * @param array $additionalHeaders
      * @return bool|string
      */
-    public function delete($data = null)
+    public function delete($data = null, $additionalHeaders = [])
     {
         $uri = $this->getUri();
 
@@ -94,7 +98,7 @@ class Resource
             $uri .= http_build_query($data);
         }
 
-        return $this->sendApiRequest($uri, 'DELETE');
+        return $this->sendApiRequest($uri, 'DELETE', [], $additionalHeaders);
     }
 
     public function __get($name)
@@ -113,23 +117,33 @@ class Resource
      * @param string $url
      * @param string $method
      * @param array $data
+     * @param array $additionalHeaders
      * @return bool|string
      */
-    protected function sendApiRequest($url, $method, $data = array())
+    protected function sendApiRequest($url, $method, $data = array(), $additionalHeaders = [])
     {
         $token = $this->getAccessToken();
         $key = $this->getApiKey();
 
-        $headers = array(
-            "Authorization: Bearer $token",
-            "Api-Key: $key",
-            "Content-Type: application/vnd.allegro.public.v1+json",
-            "Accept: application/vnd.allegro.public.v1+json"
+        $defaultHeaders = array(
+            "Authorization" => "Bearer $token",
+            "Api-Key" => "$key",
+            "Content-Type" => "application/vnd.allegro.public.v1+json",
+            "Accept" => "application/vnd.allegro.public.v1+json"
         );
+
+        $mergedHeaders = array_merge($defaultHeaders, $additionalHeaders);
+
+        function connectKeyAndValue(&$arrayValue, $arrayKey, $conector)
+        {
+            $arrayValue = $arrayKey . $conector . $arrayValue;
+        }
+
+        $headers = array_walk($mergedHeaders, 'connectKeyAndValue', ': ');
 
         $data = json_encode($data);
 
-        return $this->sendHttpRequest($url, $method, $headers, $data);
+        return $this->sendHttpRequest($url, $method, array_values($headers), $data);
     }
 
     /**
